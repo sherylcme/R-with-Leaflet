@@ -76,3 +76,41 @@ address_and_coords = data.frame(address = unique_addresses,
 
 # Combine coordinates with fbi_data 
 ak <- left_join(ak, address_and_coords, by = 'address')
+
+# Adding white noises to the dataset to separate the points
+# Individual record to represent on the map
+ak$lon  <- jitter(ak$lon, factor = 1)
+ak$lat  <- jitter(ak$lat, factor = 1)
+
+
+# Filtering unsolved cases
+ak_unsolved <- ak %>%
+  filter(Crime.Type == "Murder or Manslaughter") %>%
+  filter(Crime.Solved == "No")
+
+# Labels 
+ak_unsolved$label <- paste("<p>", ak_unsolved$City , "</p>",
+                           "<p>", ak_unsolved$Month , " ", ak_unsolved$Year , "</p>",
+                           "<p>", ak_unsolved$Victim.Sex , " ", ak_unsolved$Victim.Age, "</p>",
+                           "<p>", ak_unsolved$Victim.Race , "</p>",
+                           "<p>", ak_unsolved$Weapon, "</p>")
+
+
+# Add Circle Markers to denote the places of crime
+m <- leaflet() %>%
+  addProviderTiles(providers$Stamen.Toner) %>%
+  #set a view with coordinates
+  setView(lng = -149.4937, lat = 64.2008, zoom = 4) %>%
+  # Weight = the size of the border
+  addPolygons(data = ak_data,
+              color = "#660000",
+              weight = 1) %>%
+  addCircleMarkers(lng = ak_unsolved$lon,
+                   lat = ak_unsolved$lat,
+                   color = "ffffff",
+                   weight = 1,
+                   radius = 5,
+                   label = as.character(ak_unsolved$label))
+
+m
+
