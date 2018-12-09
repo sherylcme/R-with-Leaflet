@@ -2,6 +2,7 @@ library(leaflet)
 library(rgdal)
 library(dplyr)
 library(ggmap)
+library(htmltools)
 
 # Create leaflet object
 m <- leaflet()
@@ -110,7 +111,7 @@ m <- leaflet() %>%
                    color = "ffffff",
                    weight = 1,
                    radius = 5,
-                   label = as.character(ak_unsolved$label))
+                   label = lapply(ak_unsolved$label, HTML))
 
 m
 
