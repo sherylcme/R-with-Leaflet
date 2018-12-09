@@ -1,5 +1,7 @@
 library(leaflet)
 library(rgdal)
+library(dplyr)
+library(ggmap)
 
 # Create leaflet object
 m <- leaflet()
@@ -41,6 +43,7 @@ m
 
 # Reading SHP files, need to import rgdal package 
 ak_data <- readOGR('data/tl_2013_02_cousub/tl_2013_02_cousub.shp')
+fbi_data <- read.csv('data/database.csv')
 
 # Add data to map 
 # ProviderTiles - Stamen
@@ -53,3 +56,23 @@ m <- leaflet() %>%
               color = "#660000",
               weight = 1)
 m
+
+# Filtering data for Alaska
+ak <- filter(fbi_data, State == "Alaska")
+
+# Missing information on address
+# Create the address by combining city and state 
+ak <- mutate(ak, address = paste(City,State,"United States"))
+
+# Getting unique addresses
+unique_addresses <- unique(ak$address)
+
+# Install ggmap packages
+geocodes <- geocode(unique_addresses, source = "dsk")
+
+address_and_coords = data.frame(address = unique_addresses,
+                                lon = geocodes$lon,
+                                lat = geocodes$lat)
+
+# Combine coordinates with fbi_data 
+ak <- left_join(ak, address_and_coords, by = 'address')
