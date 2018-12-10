@@ -3,6 +3,8 @@ library(rgdal)
 library(dplyr)
 library(ggmap)
 library(htmltools)
+library(mapview)
+library(webshot)
 
 # Create leaflet object
 m <- leaflet()
@@ -159,3 +161,62 @@ m <- leaflet() %>%
                    options = layersControlOptions(collapsed = FALSE))
   
 m
+
+# Stats on fbi_data on Solved Rate
+us <- fbi_data %>%
+  mutate(Solved = ifelse(Crime.Solved == "Yes", 1, 0)) %>%
+  filter(Crime.Type == "Murder or Manslaughter") %>%
+  group_by(State) %>%
+  summarise(Num_Murders = n (),
+            Num_Solved = sum(Solved)) %>%
+  mutate(Num_Unsolved = Num_Murders - Num_Solved,
+         Solved_Rate = Num_Solved / Num_Murders)
+
+# us data
+states <- readOGR('data/cb_2016_us_state_500k/cb_2016_us_state_500k.shp')
+
+# To make the naming of the state is consistent
+levels(us$State)[40] <- "Rhode Island"
+states <- subset(states, is.element(states$NAME, us$State))
+
+# Ordering data
+us <- us[order(match(us$State, states$NAME)),]
+
+# Set Bins
+bins <- c(0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)
+pal <- colorBin("RdYlBu", domain = us$Solved_Rate, bins = bins)
+
+# Map
+labels <- paste("<p>", us$State, "</p>",
+                "<p>", "Solve Rate:", round(us$Solved_Rate, digits = 3), "</p>",
+                sep = "")
+
+m <- leaflet() %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles(providers$Stamen.Toner) %>%
+  addPolygons(data = states,
+              weight = 1,
+              smoothFactor = 0.5,
+              color = "white",
+              fillOpacity = 0.8,
+              fillColor = pal(us$Solved_Rate),
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666666",
+                fillOpacity = 0.7,
+                bringToFront = TRUE
+              ),
+              label = lapply(labels, HTML)) %>%
+  addLegend(pal = pal, 
+            values = us$Solved_Rate,
+            opacity = 0.7,
+            position = "topright")
+
+m
+
+# Exporting files
+mapshot(m, file = "static_map.png")
+install_phantomjs()
+
+library(htmlwidgets)
+saveWidget(m, file = "dynamic_map.html")
