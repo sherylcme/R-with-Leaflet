@@ -111,7 +111,51 @@ m <- leaflet() %>%
                    color = "ffffff",
                    weight = 1,
                    radius = 5,
-                   label = lapply(ak_unsolved$label, HTML))
+                   label = lapply(ak_unsolved$label, HTML),
+                   # Cluster the markers together
+                   clusterOptions = markerClusterOptions())
 
 m
 
+# Filtering solved cases
+ak_solved <- ak %>%
+  filter(Crime.Solved == "Yes") %>%
+  filter(Crime.Type == "Murder or Manslaughter")
+
+ak_solved$label <- paste("<p>", ak_solved$City , "</p>",
+                           "<p>", ak_solved$Month , " ", ak_solved$Year , "</p>",
+                           "<p>", ak_solved$Victim.Sex , " ", ak_solved$Victim.Age, "</p>",
+                           "<p>", ak_solved$Victim.Race , "</p>",
+                           "<p>", ak_solved$Weapon, "</p>")
+
+
+# Layering for solved and unsolved cases
+m <- leaflet() %>%
+  addProviderTiles(providers$Stamen.Toner) %>%
+  #set a view with coordinates
+  setView(lng = -149.4937, lat = 64.2008, zoom = 4) %>%
+  # Weight = the size of the border
+  addPolygons(data = ak_data,
+              color = "#660000",
+              weight = 1) %>%
+  addCircleMarkers(lng = ak_unsolved$lon,
+                   lat = ak_unsolved$lat,
+                   color = "red",
+                   weight = 1,
+                   radius = 5,
+                   # Adding group name for controls
+                   group = "Unsolved",
+                   label = lapply(ak_unsolved$label, HTML)) %>%
+  addCircleMarkers(lng = ak_solved$lon,
+                   lat = ak_solved$lat,
+                   color = "blue",
+                   weight = 1,
+                   radius = 5,
+                   group = "Solved",
+                   label = lapply(ak_solved$label, HTML)) %>%
+  # Specify the groups to overlap
+  addLayersControl(overlayGroups = c("Unsolved", "Solved"),
+                   # Whether to collapse the control options
+                   options = layersControlOptions(collapsed = FALSE))
+  
+m
